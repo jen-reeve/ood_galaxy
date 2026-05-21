@@ -1,0 +1,53 @@
+<%-
+  groups = OodSupport::User.new.groups.sort_by(&:id).tap { |groups|
+    groups.unshift(groups.delete(OodSupport::Process.group))
+  }.map(&:name).grep(/.*[0-9]{5}/)
+-%>
+---
+cluster: "nesi_tdc_hpc"
+form:
+  - account
+  - bc_num_hours
+  - cores
+  - memory
+  - job_runner
+
+attributes:
+  account:
+    label: "Project Code"
+    widget: select
+    options:
+      <%- groups.each do |group| %>
+      - ["<%= group %>", "<%= group %>"]
+      <%- end %>
+    required: true
+  bc_num_hours:
+    label: "Wall time (hours)"
+    widget: number_field
+    value: 4
+    min: 1
+    max: 24
+    step: 1
+  cores:
+    label: "Number of cores"
+    widget: number_field
+    value: 2
+    min: 1
+    max: 16
+    step: 1
+  memory:
+    label: "Memory (GB)"
+    widget: number_field
+    value: 8
+    min: 1
+    max: 128
+    step: 1
+  job_runner:
+    widget: select
+    label: "Galaxy tool runner"
+    help: |
+      - **local** - Tools run as child processes of the Galaxy server. Max concurrent jobs = number of cores. Jobs are lost when the session ends.
+      - **slurm** - Tools are submitted as separate Slurm jobs. No limit on concurrent jobs. Jobs continue running after the session ends.
+    options:
+      - ["local", "local"]
+      - ["slurm", "slurm"]

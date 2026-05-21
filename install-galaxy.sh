@@ -1,7 +1,7 @@
 cd "$(dirname "$0")"
 # Install Galaxy
 if [[ ! -e galaxy ]]; then
-    git clone git@github.com:galaxyproject/galaxy.git
+    git clone https://github.com/galaxyproject/galaxy.git
 fi
 
 cd galaxy
