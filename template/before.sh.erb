@@ -85,6 +85,15 @@ fi
 
 cd "${PWD}"
 
+# Find DRMAA library to prevent Galaxy job handler crash on startup
+DRMAA_LIB=$(find /opt/slurm /usr/lib64 /usr/lib /nesi -name "libdrmaa.so*" 2>/dev/null | head -1)
+if [[ -n "${DRMAA_LIB}" ]]; then
+  echo "Found DRMAA library: ${DRMAA_LIB}"
+  export DRMAA_LIBRARY_PATH="${DRMAA_LIB}"
+else
+  echo "DRMAA library not found - Galaxy job handler may fail to start"
+fi
+
 # Generate Galaxy job configuration file (Galaxy 22+ YAML format)
 (
 umask 077
@@ -106,6 +115,9 @@ execution:
       native_specification: "--ntasks=1 --cpus-per-task=<%= ppn %> --time=05:00:00 --account=<%= context.account %>"
 EOL
 )
+echo "--- job_conf.yml ---"
+cat "${JOB_CONFIG_FILE_PATH}"
+echo "--------------------"
 
 # Generate Galaxy job resource parameter configuration file
 (
@@ -148,7 +160,7 @@ galaxy:
   workflow_resource_params_file: ${WORKFLOW_RESOURCE_PARAMS_CONF_FILE_PATH}
   admin_users: ${EMAIL}
   job_config_file: ${JOB_CONFIG_FILE_PATH}
-  galaxy_url_prefix: /node/${HOSTNAME}/${port}
+  galaxy_url_prefix: /node/${host}/${port}
 
 gravity:
   gunicorn:
