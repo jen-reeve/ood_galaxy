@@ -4,7 +4,8 @@
 export port=$(find_port ${host})
 export WWW_PORT=${port}
 
-# Define Galaxy variables (GALAXY_PATH set after module load below)
+# Per-user Galaxy installation path (persistent across sessions)
+export GALAXY_PATH="${HOME}/ondemand/data/Galaxy/galaxy"
 export GALAXY_CONFIG_FILE="${PWD}/galaxy.yml"
 MOUNT="/rnode/${HOSTNAME}/${port}=galaxy.webapps.galaxy.buildapp:uwsgi_app()"
 DATAROOT=${HOME}/.galaxy
@@ -26,9 +27,61 @@ export BASH_ENV=/usr/share/lmod/lmod/init/bash
 # Export module function if it exists
 [[ $(type -t module) == "function" ]] && export -f module
 
-# Load Galaxy module and set path from EasyBuild env var
-module load <%= context.galaxy_version %>
-export GALAXY_PATH="${EBROOTGALAXY}"
+# Install Galaxy on first launch if not already present
+if [[ ! -f "${GALAXY_PATH}/run.sh" ]]; then
+  echo "First launch: installing Galaxy to ${GALAXY_PATH} (this may take 10-20 minutes)..."
+  mkdir -p "${HOME}/ondemand/data/Galaxy"
+  git clone https://github.com/galaxyproject/galaxy.git "${GALAXY_PATH}"
+  cd "${GALAXY_PATH}"
+  git checkout release_19.09
+
+  # Add Slurm dynamic job rules
+  (
+  umask 077
+  cat > "${GALAXY_PATH}/lib/galaxy/jobs/rules/destinations.py" << 'PYEOF'
+import logging
+from galaxy.jobs import JobDestination
+
+log = logging.getLogger(__name__)
+
+
+def dynamic_cores_time(app, tool, job, user_email, resource_params):
+    if not resource_params.get("cores") and not resource_params.get("time"):
+        default_destination_id = app.job_config.get_destination(None)
+        log.warning('(%s) no cores or time params, using default: %s' % (job.id, default_destination_id.runner))
+        return default_destination_id
+
+    try:
+        cores = resource_params.get("cores", "1")
+        time  = resource_params.get("time", "1")
+        native = '--ntasks=1 --cpus-per-task=%s --time=%s:00:00' % (cores, time)
+    except Exception:
+        default_destination_id = app.job_config.get_destination(None)
+        log.warning('(%s) failed to build Slurm spec, using default: %s' % (job.id, default_destination_id.runner))
+        return default_destination_id
+
+    log.info('dynamic_cores_time: nativeSpecification=%s', native)
+    return JobDestination(runner="slurm", params={"nativeSpecification": native})
+PYEOF
+  )
+
+  # Set up Python virtualenv
+  cd "${GALAXY_PATH}"
+  . ./scripts/common_startup_functions.sh
+  GALAXY_PID=galaxy.pid
+  GALAXY_LOG=galaxy.log
+  PID_FILE=$GALAXY_PID
+  LOG_FILE=$GALAXY_LOG
+  parse_common_args
+  run_common_start_up
+  setup_python
+
+  echo "Galaxy installation complete."
+else
+  echo "Galaxy already installed at ${GALAXY_PATH}."
+fi
+
+cd "${PWD}"
 
 # Generate Galaxy job configuration file
 (
