@@ -27,6 +27,7 @@ export BASH_ENV=/usr/share/lmod/lmod/init/bash
 # Export module function if it exists
 [[ $(type -t module) == "function" ]] && export -f module
 
+ml NeSI/zen3
 module load Python/3.14.4-foss-2026
 
 # Install Galaxy on first launch if not already present
