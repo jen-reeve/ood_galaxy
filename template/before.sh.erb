@@ -7,7 +7,6 @@ export WWW_PORT=${port}
 # Per-user Galaxy installation path (persistent across sessions)
 export GALAXY_PATH="${HOME}/ondemand/data/Galaxy/galaxy"
 export GALAXY_CONFIG_FILE="${PWD}/galaxy.yml"
-MOUNT="/rnode/${HOSTNAME}/${port}=galaxy.webapps.galaxy.buildapp:uwsgi_app()"
 DATAROOT=${HOME}/.galaxy
 EMAIL="${USER}@nesi.org.nz"
 export JOB_CONFIG_FILE_PATH="${PWD}/job_conf.xml"
@@ -36,7 +35,7 @@ if [[ ! -f "${GALAXY_PATH}/run.sh" ]]; then
   mkdir -p "${HOME}/ondemand/data/Galaxy"
   git clone https://github.com/galaxyproject/galaxy.git "${GALAXY_PATH}"
   cd "${GALAXY_PATH}"
-  git checkout release_19.09
+  git checkout v26.0.0
 
   # Add Slurm dynamic job rules
   (
@@ -151,26 +150,6 @@ EOL
 (
 umask 077
 cat > "${GALAXY_CONFIG_FILE}" << EOL
-uwsgi:
-  http: 0.0.0.0:${port}
-  buffer-size: 16384
-  processes: 1
-  threads: 4
-  offload-threads: 2
-  static-map: /static/style=static/style/blue
-  static-map: /static=static
-  static-map: /favicon.ico=static/favicon.ico
-  master: false
-  virtualenv: .venv
-  pythonpath: lib
-  mount: ${MOUNT}
-  manage-script-name: true
-  thunder-lock: false
-  die-on-term: true
-  hook-master-start: unix_signal:2 gracefully_kill_them_all
-  hook-master-start: unix_signal:15 gracefully_kill_them_all
-  py-call-osafterfork: true
-  enable-threads: true
 galaxy:
   data_dir: ${DATAROOT}
   single_user: ${EMAIL}
@@ -179,5 +158,15 @@ galaxy:
   workflow_resource_params_file: ${WORKFLOW_RESOURCE_PARAMS_CONF_FILE_PATH}
   admin_users: ${EMAIL}
   job_config_file: ${JOB_CONFIG_FILE_PATH}
+
+gravity:
+  gunicorn:
+    bind: "0.0.0.0:${port}"
+    workers: 1
+    timeout: 300
+  celery:
+    enable: false
+  tusd:
+    enable: false
 EOL
 )
