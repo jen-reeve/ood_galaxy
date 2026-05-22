@@ -9,7 +9,7 @@ export GALAXY_PATH="${HOME}/ondemand/data/Galaxy/galaxy"
 export GALAXY_CONFIG_FILE="${PWD}/galaxy.yml"
 DATAROOT=${HOME}/.galaxy
 EMAIL="${USER}@nesi.org.nz"
-export JOB_CONFIG_FILE_PATH="${PWD}/job_conf.xml"
+export JOB_CONFIG_FILE_PATH="${PWD}/job_conf.yml"
 export JOB_RESOURCE_PARAMS_CONF_FILE_PATH="${PWD}/job_resource_params_conf.xml"
 export WORKFLOW_RESOURCE_PARAMS_CONF_FILE_PATH="${PWD}/workflow_resource_params_conf.xml"
 
@@ -85,35 +85,39 @@ fi
 
 cd "${PWD}"
 
-# Generate Galaxy job configuration file
+# Generate Galaxy job configuration file (Galaxy 22+ YAML format)
 (
 umask 077
 cat > "${JOB_CONFIG_FILE_PATH}" << EOL
-<?xml version="1.0"?>
-<job_conf>
-    <resources>
-        <group id="basic">cores,time</group>
-    </resources>
-    <plugins>
-        <plugin id="local" type="runner" load="galaxy.jobs.runners.local:LocalJobRunner"/>
-        <plugin id="slurm" type="runner" load="galaxy.jobs.runners.slurm:SlurmJobRunner"/>
-        <plugin id="dynamic" type="runner">
-            <param id="rules_module">galaxy.jobs.rules</param>
-        </plugin>
-    </plugins>
-    <destinations default="<%= context.job_runner %>">
-        <destination id="dynamic_cores_time" runner="dynamic">
-            <param id="type">python</param>
-            <param id="function">dynamic_cores_time</param>
-        </destination>
-        <destination id="slurm" runner="slurm">
-            <param id="nativeSpecification">--ntasks=1 --cpus-per-task=<%= ppn %> --time=05:00:00 --account=<%= context.account %></param>
-        </destination>
-        <destination id="local" runner="local">
-            <param id="local_slots"><%= ppn %></param>
-        </destination>
-    </destinations>
-</job_conf>
+runners:
+  local:
+    load: galaxy.jobs.runners.local:LocalJobRunner
+  slurm:
+    load: galaxy.jobs.runners.slurm:SlurmJobRunner
+  dynamic:
+    load: galaxy.jobs.runners.dynamic:DynamicJobRunner
+    rules_module: galaxy.jobs.rules
+
+execution:
+  default: <%= context.job_runner %>
+  environments:
+    local:
+      runner: local
+      slots: <%= ppn %>
+    slurm:
+      runner: slurm
+      native_specification: "--ntasks=1 --cpus-per-task=<%= ppn %> --time=05:00:00 --account=<%= context.account %>"
+    dynamic_cores_time:
+      runner: dynamic
+      type: python
+      function: dynamic_cores_time
+
+resources:
+  default: basic
+  groups:
+    basic:
+      - cores
+      - time
 EOL
 )
 
@@ -158,6 +162,7 @@ galaxy:
   workflow_resource_params_file: ${WORKFLOW_RESOURCE_PARAMS_CONF_FILE_PATH}
   admin_users: ${EMAIL}
   job_config_file: ${JOB_CONFIG_FILE_PATH}
+  galaxy_url_prefix: /rnode/${HOSTNAME}/${port}
 
 gravity:
   gunicorn:
