@@ -94,9 +94,6 @@ runners:
     load: galaxy.jobs.runners.local:LocalJobRunner
   slurm:
     load: galaxy.jobs.runners.slurm:SlurmJobRunner
-  dynamic:
-    load: galaxy.jobs.runners.dynamic:DynamicJobRunner
-    rules_module: galaxy.jobs.rules
 
 execution:
   default: <%= context.job_runner %>
@@ -107,17 +104,6 @@ execution:
     slurm:
       runner: slurm
       native_specification: "--ntasks=1 --cpus-per-task=<%= ppn %> --time=05:00:00 --account=<%= context.account %>"
-    dynamic_cores_time:
-      runner: dynamic
-      type: python
-      function: dynamic_cores_time
-
-resources:
-  default: basic
-  groups:
-    basic:
-      - cores
-      - time
 EOL
 )
 
@@ -162,7 +148,6 @@ galaxy:
   workflow_resource_params_file: ${WORKFLOW_RESOURCE_PARAMS_CONF_FILE_PATH}
   admin_users: ${EMAIL}
   job_config_file: ${JOB_CONFIG_FILE_PATH}
-  galaxy_url_prefix: /rnode/${HOSTNAME}/${port}
 
 gravity:
   gunicorn:
