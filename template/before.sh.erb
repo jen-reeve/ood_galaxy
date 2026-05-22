@@ -4,8 +4,7 @@
 export port=$(find_port ${host})
 export WWW_PORT=${port}
 
-# Define Galaxy variables
-export GALAXY_PATH="<%= BatchConnect::App.from_token(session.token).root.realpath.join("galaxy").to_s %>"
+# Define Galaxy variables (GALAXY_PATH set after module load below)
 export GALAXY_CONFIG_FILE="${PWD}/galaxy.yml"
 MOUNT="/rnode/${HOSTNAME}/${port}=galaxy.webapps.galaxy.buildapp:uwsgi_app()"
 DATAROOT=${HOME}/.galaxy
@@ -26,6 +25,10 @@ export BASH_ENV=/usr/share/lmod/lmod/init/bash
 
 # Export module function if it exists
 [[ $(type -t module) == "function" ]] && export -f module
+
+# Load Galaxy module and set path from EasyBuild env var
+module load <%= context.galaxy_version %>
+export GALAXY_PATH="${EBROOTGALAXY}"
 
 # Generate Galaxy job configuration file
 (

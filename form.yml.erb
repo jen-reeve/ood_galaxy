@@ -7,6 +7,7 @@
 cluster: "nesi_tdc_hpc"
 form:
   - account
+  - galaxy_version
   - bc_num_hours
   - cores
   - memory
@@ -21,6 +22,11 @@ attributes:
       - ["<%= group %>", "<%= group %>"]
       <%- end %>
     required: true
+  galaxy_version:
+    widget: select
+    label: "Galaxy Version"
+    options:
+      - ["Galaxy/VERSION-foss-2023a", "Galaxy/VERSION-foss-2023a"]
   bc_num_hours:
     label: "Wall time (hours)"
     widget: number_field
